@@ -1,0 +1,34 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>vqa_ros</name>
+  <version>0.0.0</version>
+  <description>TODO: Package description</description>
+  <maintainer email="juan97pena@gmail.com">juan</maintainer>
+  <license>TODO: License declaration</license>
+
+  <test_depend>ament_copyright</test_depend>
+  <test_depend>ament_flake8</test_depend>
+  <test_depend>ament_pep257</test_depend>
+  <test_depend>python3-pytest</test_depend>
+
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>vqa_msgs</exec_depend>
+  <exec_depend>python3-torch</exec_depend>
+  <exec_depend>python3-torchvision</exec_depend>
+  <exec_depend>python3-cython</exec_depend>
+  <exec_depend>python3-scipy</exec_depend>
+  <exec_depend>python3-xmltodict</exec_depend>
+  <exec_depend>python3-tqdm</exec_depend>
+  <exec_depend>python3-transformers</exec_depend>
+  <exec_depend>python3-onnx</exec_depend>
+  <exec_depend>python3-onnxruntime</exec_depend>
+  <exec_depend>python3-prettytable</exec_depend>
+  <exec_depend>python3-submitit</exec_depend>
+  <exec_depend>python3-tim</exec_depend>
+  
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

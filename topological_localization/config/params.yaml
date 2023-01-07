@@ -1,0 +1,5 @@
+/**:
+  ros__parameters:
+
+    map_resolution: 0.050
+    kernel_scale: 2.0

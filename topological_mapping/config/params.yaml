@@ -1,0 +1,6 @@
+map_server:
+    ros__parameters:
+      frame_id: map   
+      topic_name: map
+      use_sim_time: false
+      yaml_filename: "/home/juan/Workspaces/phd_ws/src/topological_localization/ros2_computer_vision/src/computer_vision/maps/aws_house.yaml"

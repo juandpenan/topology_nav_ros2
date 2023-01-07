@@ -1,0 +1,13 @@
+- state_qty: 8
+- question_qty: 10
+- questions:
+  - Where are you?
+  - Is there any door?
+  - What color is the wall?
+  - What object do you see?
+  - What color is the object
+  - What color is the floor
+  - Is there any person?
+  - Is there any window?
+  - Is there any plant?
+  - Is there any bed?

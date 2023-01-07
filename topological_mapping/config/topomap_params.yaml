@@ -1,0 +1,5 @@
+/**:
+  ros__parameters:
+    question_qty: 10
+    state_qty: 8
+    max_images_per_state: 10
