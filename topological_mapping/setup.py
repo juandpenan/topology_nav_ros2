@@ -16,7 +16,10 @@ setup(
         ('share/' + package_name, ['package.xml']),
         (os.path.join('share', package_name), glob('launch/*launch.[pxy][yma]*')),
         (os.path.join('share', package_name), glob('config/*')),
-        (os.path.join('share', package_name), glob('map/*.npy'))
+        (os.path.join('share', package_name), glob('map/map/*.npy')),
+        (os.path.join('share', package_name), glob('map/map2/*.npy')),
+        (os.path.join('share', package_name), glob('map/map3/*.npy')),
+        (os.path.join('share', package_name), glob('map/map4/*.npy'))
     ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -28,7 +31,8 @@ setup(
     entry_points={
         'console_scripts': [
             'mapping_node = topological_mapping.main:main',
-            'generate_map = topological_mapping.topological_mapping.images_to_map:main'       
+            'generate_map = topological_mapping.topological_mapping.images_to_map:main',
+            'show_generated_map = topological_mapping.show_mapped_coordinates:main'     
         ],
     },
 )

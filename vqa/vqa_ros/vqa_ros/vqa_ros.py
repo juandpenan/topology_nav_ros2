@@ -1,27 +1,33 @@
 from PIL import Image as Pimage
 
 from cv_bridge import CvBridge
-from sensor_msgs.msg import Image
-from rclpy.node import Node
+
 import rclpy
+from rclpy.node import Node
+
+from sensor_msgs.msg import Image
+
 import torch
 
+import ray
+
 from vqa_msgs.msg import VisualFeatures
+
 from vqa_ros import utils
 
 torch.set_grad_enabled(False)
 
-
+# @ray.remote
 class VQAModel(Node):
 
     def __init__(self):
         super().__init__('vqa_node')
         # params
-        self.declare_parameter('frequency_execution_time', 2.1 )  
+        self.declare_parameter('frequency_execution_time', 2.1)
         self.declare_parameter('questions', ['where am i?'])  
         execution_time = self.get_parameter('frequency_execution_time').get_parameter_value().double_value
-        self.questions  = self.get_parameter('questions').get_parameter_value().string_array_value
-        self.model=None
+        self.questions = self.get_parameter('questions').get_parameter_value().string_array_value
+        self.model = None
         self.load_model()
         self.image_data = None  
         self.image_converter = CvBridge()        
@@ -35,12 +41,15 @@ class VQAModel(Node):
 
 
 
-    def timer_callback(self):        
-        try:            
+    def timer_callback(self):      
+        try:
             image = self.image_converter.imgmsg_to_cv2(self.image_data)
+            if self.feature_publisher.get_subscription_count() == 0:
+                return
         except:               
             self.get_logger().warning("Waiting for image callback")
         else:
+
             visual_features = VisualFeatures()
             answers = []
             confidence = []         
