@@ -238,35 +238,24 @@ class TopologicalLocalization(Node):
         return kernel
         
     def _2d_gaussian_kernel(self,k_size = (10,10) ,sig = [1,1], center = (2,2)):
-
         # Define the kernel size
-        n_h = k_size[0]
-        n_w = k_size[1]
+        n_h, n_w = k_size
 
         # Define the standard deviation of the Gaussian distribution for each axis
-        sigma_h = sig[0]
-        sigma_w = sig[1]
+        sigma_h, sigma_w = sig
 
         # Define the center of the kernel
-        center_h = center[0]
-        center_w = center[1]
+        center_h, center_w = center
 
-
-        # Create an empty kernel
-        kernel = np.zeros((n_h, n_w))
+        # Create 2D coordinate arrays for the kernel using np.mgrid
+        y, x = np.mgrid[:n_h, :n_w]
 
         # Calculate the values of the Gaussian distribution at each element of the kernel
-        for h in range(n_h):
-            for w in range(n_w):
-                try:
-                    kernel[h, w] = (1 / (np.sqrt(2 * np.pi) * sigma_h * sigma_w)) * np.exp(-(((h - center_h)**2 / (2 * sigma_h**2)) + ((w - center_w)**2 / (2 * sigma_w**2))))
-                except ValueError:
-                    self.get_logger().error('error with kernel')  
+        kernel = (1 / (np.sqrt(2 * np.pi) * sigma_h * sigma_w)) * np.exp(-(((x - center_w) ** 2 / (2 * sigma_w ** 2)) + ((y - center_h) ** 2 / (2 * sigma_h ** 2))))
 
-        # Normalize the kernel so that the values sum to 1   
+        # Normalize the kernel so that the values sum to 1
         kernel = kernel / np.sum(kernel)
-
-        return kernel
+        
     def prediction_step(self,delta_distance,delta_theta):
 
         self.get_logger().debug(f'delta distance{delta_distance}')         
