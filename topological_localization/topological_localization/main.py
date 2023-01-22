@@ -222,18 +222,12 @@ class TopologicalLocalization(Node):
     def _calculate_sigma(self):
         return
     def _1d_gaussian_kernel(self,k_size = 5,sigma = 1.0,center = 2):
-        # Define the kernel size
-        n = k_size
 
-        # Create an empty kernel
-        kernel = np.zeros(n)
-
-        # Calculate the values of the Gaussian distribution at each element of the kernel
-        for x in range(n):
-            kernel[x] = (1 / (np.sqrt(2 * np.pi) * sigma)) * np.exp(-((x - center)**2 / (2 * sigma**2)))
-
-        # Normalize the kernel so that the values sum to 1
-        kernel = kernel / np.sum(kernel)
+        x = np.arange(k_size)
+        
+        kernel = (1 / (np.sqrt(2 * np.pi) * sigma)) * np.exp(-((x - center) ** 2 / (2 * sigma ** 2)))
+       
+        kernel = kernel / np.sum(kernel)     
 
         return kernel
         
@@ -255,7 +249,7 @@ class TopologicalLocalization(Node):
 
         # Normalize the kernel so that the values sum to 1
         kernel = kernel / np.sum(kernel)
-        
+
     def prediction_step(self,delta_distance,delta_theta):
 
         self.get_logger().debug(f'delta distance{delta_distance}')         
