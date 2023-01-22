@@ -15,7 +15,7 @@ class TopologicalMap():
             cls._instance = super(TopologicalMap, cls).__new__(cls)
         return cls._instance
         
-    def __init__(self, occupancy_map, state_qty, question_qty):
+    def __init__(self, occupancy_map, state_qty, question_qty, question_depth):
 
         self.__SEMANTIC_RESULTS_QTY = 2
         self.__pkg_folder = str(pathlib.Path(__file__).parent.resolve()).removesuffix(
