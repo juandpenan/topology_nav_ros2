@@ -61,6 +61,6 @@ def generate_launch_description():
     return LaunchDescription([
         map_server,  
         map,
-        save_disc,
+        save_disc
             
    ])

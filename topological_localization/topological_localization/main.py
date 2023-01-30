@@ -14,7 +14,7 @@ from vqa_msgs.msg import VisualFeatures
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy,QoSDurabilityPolicy
 import pathlib
 from transformers import RobertaModel,RobertaTokenizerFast
-from scipy import ndimage
+from scipy import ndimage, signal
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
@@ -23,6 +23,7 @@ from sensor_msgs.msg import Image, CameraInfo
 from tf2_ros import TransformBroadcaster, TransformException
 from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
+from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster
 import math
 import PyKDL
 import tf2_kdl
@@ -51,18 +52,21 @@ class TopologicalLocalization(Node):
         # self.declare_parameter('kernel_scale', 2.0)
         self.declare_parameter('question_qty', 10)
         self.declare_parameter('state_qty', 8)
-
+        self.declare_parameter('max_images_per_state', 10)
+        
         # it is the number the map(gridmap) shape will be divided by
         self.kernel_scale = 8 # self.get_parameter('kernel_scale').get_parameter_value().double_value
         self.state_qty = self.get_parameter('state_qty').get_parameter_value().integer_value
         self.question_qty = self.get_parameter('question_qty').get_parameter_value().integer_value
+        self.question_depth = self.get_parameter('max_images_per_state').get_parameter_value().integer_value
         # m/pix
         self.map_resolution = self.get_parameter('map_resolution').get_parameter_value().double_value
-        self.__pkg_folder = str(pathlib.Path(__file__).parent.resolve()).removesuffix("/topological_localization")
-        self.map_folder = os.path.join(get_package_share_directory('topological_mapping'),'map3.npy')
-        self.image_map_folder = os.path.join(get_package_share_directory('topological_mapping'),'map3.jpg')        
+        self.__pkg_folder = str(pathlib.Path(__file__).parent.resolve()).removesuffix('/topological_localization')
+        self.map_folder = os.path.join(get_package_share_directory('topological_mapping'), 'map2.npy')
+        self.image_map_folder = os.path.join(get_package_share_directory('topological_mapping'), 'map3.jpg')        
         self.vqa_features = None
         self.image_converter = CvBridge()
+        self.tf_static_broadcaster = StaticTransformBroadcaster(self)
         self.tf_broadcaster = TransformBroadcaster(self)
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
@@ -70,21 +74,17 @@ class TopologicalLocalization(Node):
         self.odom_pose = None
         self.visualizer = None
         #init prediction variables
-        self.previous_x = 0
-        self.previous_y = 0
-        self.previous_angle = 0
-        self.d_increment = 0
-        self.angle_increment = 0     
-        self.first_run = True
         self.odom_pose = Odometry().pose
         self.odom_pose.pose.position.x = 0.0
         self.odom_pose.pose.position.y = 0.0
+        self.d_increment, self.angle_increment = 0.0
 
-        self.timer = self.create_timer(15.0, self.control_cycle)
+        self.timer = self.create_timer(2.0, self.control_cycle)
         # #publishers 
         self.pose_publisher = self.create_publisher(PoseWithCovarianceStamped, '/markov_pose', 1)
         self.marker_publisher = self.create_publisher(MarkerArray, '/localization_visualizer', 1)
         self.grid_image_publisher = self.create_publisher(Image, '/localization_grid',1)
+        self.grid_publisher = self.create_publisher(OccupancyGrid, '/topomap/localization_grid',1)
         #subscribers
         # self.create_subscription(VisualFeatures,"/vqa/features",self.vqa_callback,1)
         self.create_subscription(OccupancyGrid,
@@ -99,22 +99,33 @@ class TopologicalLocalization(Node):
         self.tss.registerCallback(self.feature_callback) 
         self.odom_list = []
 
+        self.broadcast_map()
 
     def control_cycle(self):
 
-        if len(self.odom_list) < 2 :
-            return 
+
+        # if len(self.odom_list) < 2:
+        #     return
         self.get_logger().info('executing algorithm')       
         self.d_increment, self.angle_increment = self._calculate_increment(self.odom_list)
-        self.localization_algorithm()        
+        self.localization_algorithm()
+        # image = self.grid_to_msg()
+        # msg = self.img_to_occupancy(image)
 
-    def map_callback(self,msg):
-        self.map_helper = TopologicalMap(msg,self.state_qty,self.question_qty)
-        self.get_logger().info("loading topological map .. ")
+        # self.grid_publisher.publish(msg)
+
+    def map_callback(self, msg):
+
+        self.map_helper = TopologicalMap(msg,
+                                         self.state_qty,
+                                         self.question_qty,
+                                         self.question_depth)
+
+        self.get_logger().info('loading topological map .. ')
         self.get_logger().info('map folder path  ' + self.map_folder)
-        self.map_helper.load_map(self.map_folder)      
+        self.map_helper.load_map(self.map_folder)
         self.init_localization_grid()
-        # self.visualizer = Visualizer(self.map_helper)
+
 
     def grid_to_msg(self):
         # fig = Figure(figsize=(20, 15), dpi=5)
@@ -130,11 +141,46 @@ class TopologicalLocalization(Node):
         map_image = cv2.imread(self.image_map_folder) 
 
         alg_image = (self._localization_grid[:,:,0] * 255).round().astype(np.uint8)
-        alg_image = cv2.applyColorMap(alg_image, cv2.COLORMAP_JET)
+        # alg_image = cv2.applyColorMap(alg_image, cv2.COLORMAP_JET)
 
-        image = cv2.addWeighted(map_image, 0.15, alg_image, 0.85, 0.0)
+        # # # image = cv2.addWeighted(map_image, 0.15, alg_image, 0.85, 0.0)
 
-        return self.image_converter.cv2_to_imgmsg(image)
+        # alg_image = cv2.cvtColor(alg_image, cv2.COLOR_BGR2GRAY)
+
+        # return self.image_converter.cv2_to_imgmsg(image)
+        return alg_image
+
+    def broadcast_map(self):
+
+        t = TransformStamped()
+
+        t.header.stamp = self.get_clock().now().to_msg()
+        t.header.frame_id = 'world'
+        t.child_frame_id = 'map'
+
+        t.transform.translation.x = 0.0
+        t.transform.translation.y = 0.0
+        t.transform.translation.z = 0.0
+
+        t.transform.rotation.x = 0.0
+        t.transform.rotation.y = 0.0
+        t.transform.rotation.z = 0.0
+        t.transform.rotation.w = 1.0    
+
+        self.tf_static_broadcaster.sendTransform(t)
+
+    def img_to_occupancy(self,image):
+        image = image * 100
+
+        map = self.map_helper.occupancy_map
+        # self.get_logger().info(f'falttened data {image.flatten().tolist()}')
+        data = np.array(image.flatten(),dtype=np.int8)
+
+        map.data = data.tolist()
+
+
+        return map
+
 
     def feature_callback(self,odom_msg,vqa_msg):
         if self.map_helper == None:
@@ -147,48 +193,40 @@ class TopologicalLocalization(Node):
         if len(self.odom_list) > 2:
             self.odom_list.pop(0)
 
-   
-        # if (self.first_run):
-        #     self.previous_x = odom_msg.pose.pose.position.x
-        #     self.previous_y = odom_msg.pose.pose.position.y
-        #     self.previous_angle = odom_msg.pose.pose.orientation.z
-        # x = odom_msg.pose.pose.position.x
-        # y = odom_msg.pose.pose.position.y
-        # angle = odom_msg.pose.pose.orientation.z
-        # self.d_increment = math.sqrt((x - self.previous_x)**2 + (y - self.previous_y)**2)
-        # self.angle_increment = math.sqrt((angle - self.previous_angle)**2)
-        # self.previous_x = odom_msg.pose.pose.position.x
-        # self.previous_angle = odom_msg.pose.pose.orientation.z
-        # self.previous_y = odom_msg.pose.pose.position.y
-        # self.first_run = False 
-        # self.localization_algorithm()
-        # self.init_localization_grid()       
-        return
+        return True
+
     def init_localization_grid(self):
 
         self._localization_grid = np.full(
-            shape=(self.map_helper.topological_map.shape[0],
-                   self.map_helper.topological_map.shape[1],
-                   self.map_helper.topological_map.shape[2]+1),
-            fill_value=1/((self.state_qty+1)*self.map_helper.topological_map.shape[0]*
-                        self.map_helper.topological_map.shape[1]))
-
-        self._localization_grid[116,192,0] = 1.0
-        self.get_logger().info("grid initialized") 
+            shape=(self.map_helper.occupancy_map.info.height,
+                   self.map_helper.occupancy_map.info.width,
+                   self.state_qty+1),
+            fill_value=1/((self.state_qty+1)*self.map_helper.occupancy_map.info.height*
+                        self.map_helper.occupancy_map.info.width))
+        #116,192
+        # self._localization_grid[105:125,180:200,0] = 0.45
+        # self._localization_grid[20:80,0:30,0] = 1.0
+        self.get_logger().info("grid initialized")
+        # self._show_init_grid()
  
         return True
 
     def convolve_1d(self,kernel_1d):
+        
+        _ = np.apply_along_axis(lambda m: np.convolve(m, kernel, mode="same"), axis=-1, arr=_localization_grid[:,:,1:])
+        self._localization_grid[:,:,1:] = _
 
-        for x in range(self._localization_grid.shape[0]):
-            for y in range(self._localization_grid.shape[1]):            
-                self._localization_grid[x,y,1:] = ndimage.convolve1d(self._localization_grid[x,y,1:], kernel_1d, mode="constant")       
+        # for x in range(self._localization_grid.shape[0]):
+        #     for y in range(self._localization_grid.shape[1]):            
+        #         self._localization_grid[x,y,1:] = ndimage.convolve1d(self._localization_grid[x,y,1:], kernel_1d, mode="constant")       
         return True
    
     def _calculate_1d_kernel_size(self):
+
         size = int(self.map_helper.topological_map.shape[2]/ self.kernel_scale)
         return size
     def _calculate_1d_kernel_center(self,odom_pose,kernel_shape,is_centered=False):
+
         kernel_resolution = 2*np.pi / kernel_shape  #rad/div
         angle = self.map_helper._quaternion_to_euler(odom_pose.pose.orientation)[-1]
         if angle < 0:
@@ -202,10 +240,12 @@ class TopologicalLocalization(Node):
         return center
     
     def _calculate_2d_kernel_size(self):
+
         height = int(self.map_helper.topological_map.shape[0] / self.kernel_scale)
         width = int(self.map_helper.topological_map.shape[1] / self.kernel_scale) 
         return (height,width)
     def _calculate_2d_kernel_center(self,odom_pose,kernel_shape,is_centered=False):
+
         kernel_resolution = ((self.map_helper.topological_map.shape[0] * self.map_resolution / kernel_shape[0]) + \
                             (self.map_helper.topological_map.shape[1] * self.map_resolution / kernel_shape[1]))/2
  
@@ -265,11 +305,12 @@ class TopologicalLocalization(Node):
         kernel_shape_1d = self._calculate_1d_kernel_size()
 
         center_2d = self._calculate_2d_kernel_center(self.odom_pose,kernel_shape_2d,is_centered=centered_2d)    
-        center_1d = self._calculate_1d_kernel_center(self.odom_pose,kernel_shape_1d,is_centered=centered_1d)   
+        center_1d = self._calculate_1d_kernel_center(self.odom_pose,kernel_shape_1d,is_centered=centered_1d)
+         
         gauss_kernel_2d =  self._2d_gaussian_kernel(kernel_shape_2d,center=center_2d)
         gauss_kernel_1d = self._1d_gaussian_kernel(kernel_shape_1d,center=center_1d)
-
-        self._localization_grid[:,:,0] = ndimage.convolve(self._localization_grid[:,:,0], gauss_kernel_2d, mode='constant')
+        #  ndimage.convolve(self._localization_grid[:,:,0], gauss_kernel_2d, mode='constant')
+        self._localization_grid[:,:,0] = signal.fftconvolve(self._localization_grid[:,:,0], gauss_kernel_2d, mode='same')
         self.convolve_1d(gauss_kernel_1d)       
         self.get_logger().debug(f"center 2d {center_2d}")
 
@@ -277,20 +318,21 @@ class TopologicalLocalization(Node):
     def normalize_grid(self):
         self._localization_grid = self._localization_grid / self._localization_grid.max()
     def perception_update(self):
-        for row in range(self.map_helper.topological_map.shape[0]):
-            for colum in range(self.map_helper.topological_map.shape[1]):
-                sum = 0
-                for state in range(self.map_helper.topological_map.shape[2]):                                   
-                    for i in range(len(self.vqa_features.data)):                        
-                        if self.map_helper.topological_map[row,colum,state,i][0] != 0:
-                            self.get_logger().debug(f'answer: {self.map_helper.topological_map[row,colum,state,i][0]}')
-                            for answ in range(self.map_helper.topological_map[row,colum,state,i][0].shape[0]):                                   
-                                if self.map_helper.topological_map[row,colum,state,i,0][answ] == self.vqa_features.data[i]:
-                                    sum += self.vqa_features.acc[i]        
-                                    self._localization_grid[row,colum,0] = sum      
-                                    self._localization_grid[row,colum,state+1] = sum                                   
-                                else:
-                                    continue
+        # for row in range(self.map_helper.topological_map.shape[0]):
+        #     for colum in range(self.map_helper.topological_map.shape[1]):
+        #         sum = 0
+        #         for state in range(self.map_helper.topological_map.shape[2]):                                   
+        #             for i in range(len(self.vqa_features.data)):                        
+        #                 if self.map_helper.topological_map[row,colum,state,i][0] != 0:
+        #                     self.get_logger().debug(f'answer: {self.map_helper.topological_map[row,colum,state,i][0]}')
+        #                     for answ in range(self.map_helper.topological_map[row,colum,state,i][0].shape[0]):                                   
+        #                         if self.map_helper.topological_map[row,colum,state,i,0][answ] == self.vqa_features.data[i]:
+        #                             sum += self.vqa_features.acc[i]        
+        #                             self._localization_grid[row,colum,0] = sum      
+        #                             self._localization_grid[row,colum,state+1] = sum                                   
+        #                         else:
+        #                             continue
+        # np.where(self.map_helper.topological_map['q_a'] == 'blue')
 
         self.normalize_grid()
         return True
@@ -379,16 +421,16 @@ class TopologicalLocalization(Node):
         # self.get_logger().info(f'max before{ind_x_y }')
 
         # self.get_logger().debug(f'sum after{np.sum(self._localization_grid)}')
-        self.perception_update()
+        # self.perception_update()
         # msg = self.grid_to_msg()
         # self.grid_image_publisher.publish(msg)
         # self.get_logger().info('perception grid published')
 
         # self.get_logger().info('bofore predict grid published')
-        # self.prediction_step(self.d_increment,self.angle_increment)
+        self.prediction_step(self.d_increment,self.angle_increment)
 
-        msg = self.grid_to_msg()
-        self.grid_image_publisher.publish(msg)
+        # msg = self.grid_to_msg()
+        # self.grid_image_publisher.publish(msg)
 
     
         # ind_x_y = np.unravel_index(np.argmax(self._localization_grid, axis=None), self._localization_grid.shape)

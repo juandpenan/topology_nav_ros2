@@ -3,7 +3,7 @@ import unittest
 import os
 import pathlib
 import numpy as np
-map_folder = os.path.join(get_package_share_directory('topological_mapping'),'map.npy') 
+map_folder = os.path.join(get_package_share_directory('topological_mapping'),'map3.npy') 
 map = np.load(map_folder,allow_pickle=True) 
 def test_map():
     flag = False    
@@ -28,7 +28,7 @@ def test_all_states_saved():
                     for i in range(10):
                         if map[row,colum,state,i][0] != 0: 
                             states_count += 1
-    assert subdir_count == states_count
+    assert subdir_count*10 == states_count
 
     
                                                              

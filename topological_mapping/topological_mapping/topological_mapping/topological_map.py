@@ -15,7 +15,7 @@ class TopologicalMap():
             cls._instance = super(TopologicalMap, cls).__new__(cls)
         return cls._instance
         
-    def __init__(self, occupancy_map, state_qty, question_qty, question_depth):
+    def __init__(self, occupancy_map, state_qty, question_qty, question_depth=10):
 
         self.__SEMANTIC_RESULTS_QTY = 2
         self.__pkg_folder = str(pathlib.Path(__file__).parent.resolve()).removesuffix(
@@ -35,15 +35,18 @@ class TopologicalMap():
         # Height (y / rows):
         # Width (x / columns)
         # (y,x,#states per grid,#questions,answer string,prob)
-        self.topological_map = np.zeros((self.occupancy_map.info.height,
-                                         self.occupancy_map.info.width,
-                                         self.state_qty, self.question_qty,
-                                         self.__SEMANTIC_RESULTS_QTY), dtype=object)
-        # self.__index_array = np.arange(
-        #     self.occupancy_map.info.height * self.occupancy_map.info.width * state_qty).reshape(
-        #         self.occupancy_map.info.height,
-        #         self.occupancy_map.info.width,
-        #         state_qty)
+        # self.topological_map = np.zeros((self.occupancy_map.info.height,
+        #                                  self.occupancy_map.info.width,
+        #                                  self.state_qty, self.question_qty,
+        #                                  self.__SEMANTIC_RESULTS_QTY), dtype=object)
+
+        dt = np.dtype({'names': ['index', 'q_a', 'acc'],
+                       'formats': ['i8',
+                                   '('+str(question_qty)+','+str(question_depth)+')'+'U16',
+                                   '('+str(question_qty)+','+str(question_depth)+')'+'f']})
+
+        self.topological_map = np.array([], dtype=dt)
+
 
     def __del__(self):
         print('Topological map destroyed')
@@ -113,7 +116,7 @@ class TopologicalMap():
         msg.orientation.w = quaternion[3]
         return msg
 
-    def update_map(self, features, acc, index=None, pose=None, cost_args=[None, None, None]):
+    def update_map(self, features=[], acc=[], glob_features=None, index=None, pose=None, cost_args=[None, None, None]):
 
         if index is not None:
             _index = index
@@ -124,13 +127,7 @@ class TopologicalMap():
                                                              cost_args[1],
                                                              cost_args[2])
 
-        indexes = np.unravel_index(_index,
-                                   shape=(self.occupancy_map.info.height,
-                                          self.occupancy_map.info.width,
-                                          self.state_qty))
-
-        for i in range(self.question_qty):         
-            self.topological_map[indexes[0], indexes[1], indexes[2], i] = features[i], acc[i]
+        self.topological_map = np.append(self.topological_map, glob_features)
 
         return True
 
@@ -168,7 +165,10 @@ class TopologicalMap():
                                    shape=(self.occupancy_map.info.height,
                                           self.occupancy_map.info.width,
                                           self.state_qty))
-        return np.all(self.topological_map[indexes[0], indexes[1], indexes[2]]) == 0
+
+        # not np.where(self.topological_map['index'] == _index)[0].size > 0
+        # return np.all(self.topological_map[indexes[0], indexes[1], indexes[2]]) == 0
+        return not np.where(self.topological_map['index'] == _index)[0].size > 0
 
     def _quaternion_from_euler(self, ai, aj, ak):
         ai /= 2.0
@@ -275,9 +275,6 @@ class TopologicalMap():
         elif angle > 2 * pi:
             angle = 2 * pi
 
-
-
-
         discretized_angle = int(np.round(np.interp(angle, np.linspace(0, 2*pi, self.state_qty),
                                 np.arange(self.state_qty))))
 
@@ -285,5 +282,5 @@ class TopologicalMap():
 
     def _undiscretize_angle(self, discretized_angle):
 
-        return np.interp(discretized_angle, np.arange(self.state_qty),
-                         np.linspace(0, 2*pi, self.state_qty), left=None, right=None, period=None)
+        return np.interp(discretized_angle, np.arange(self.state_qty + 1),
+                         np.linspace(0, 2*pi, self.state_qty + 1), left=None, right=None, period=None)

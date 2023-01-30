@@ -16,10 +16,11 @@ setup(
         ('share/' + package_name, ['package.xml']),
         (os.path.join('share', package_name), glob('launch/*launch.[pxy][yma]*')),
         (os.path.join('share', package_name), glob('config/*')),
-        (os.path.join('share', package_name), glob('map/map/*.npy')),
-        (os.path.join('share', package_name), glob('map/map2/*.npy')),
-        (os.path.join('share', package_name), glob('map/map3/*.npy')),
-        (os.path.join('share', package_name), glob('map/map4/*.npy'))
+        (os.path.join('share', package_name), glob('map/**/*.npy')),
+        (os.path.join('share', package_name), glob('map/**/*.jpg'))
+        # (os.path.join('share', package_name), glob('map/map2/*.npy')),
+        # (os.path.join('share', package_name), glob('map/map3/*.npy')),
+        # (os.path.join('share', package_name), glob('map/map4/*.jpg'))
     ],
     install_requires=['setuptools'],
     zip_safe=True,
