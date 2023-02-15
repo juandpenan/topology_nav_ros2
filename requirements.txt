@@ -1,11 +1,11 @@
 setuptools
-torch>=1.7.0
-torchvision>=0.6.0
+torch==1.12.1
+torchvision==0.13.1
 cython
 scipy
 xmltodict
-tqdm
-transformers==4.5.1
+tqdm==4.64.1
+transformers==4.24.0
 onnx
 onnxruntime
 prettytable
