@@ -1,9 +1,10 @@
-from setuptools import setup
 import os
 from glob import glob
 
+from setuptools import setup
+
 package_name = 'topological_mapping'
-topological_map = "topological_mapping/topological_mapping"
+topological_map = 'topological_mapping/topological_mapping'
 
 setup(
     name=package_name,
@@ -18,9 +19,7 @@ setup(
         (os.path.join('share', package_name), glob('config/*')),
         (os.path.join('share', package_name), glob('map/**/*.npy')),
         (os.path.join('share', package_name), glob('map/**/*.jpg'))
-        # (os.path.join('share', package_name), glob('map/map2/*.npy')),
-        # (os.path.join('share', package_name), glob('map/map3/*.npy')),
-        # (os.path.join('share', package_name), glob('map/map4/*.jpg'))
+
     ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -33,7 +32,7 @@ setup(
         'console_scripts': [
             'mapping_node = topological_mapping.main:main',
             'generate_map = topological_mapping.topological_mapping.images_to_map:main',
-            'show_generated_map = topological_mapping.show_mapped_coordinates:main'     
+            'show_generated_map = topological_mapping.show_mapped_coordinates:main'
         ],
     },
 )

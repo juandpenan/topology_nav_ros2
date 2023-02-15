@@ -55,7 +55,7 @@ class TopologicalLocalization(Node):
         self.declare_parameter('max_images_per_state', 10)
         
         # it is the number the map(gridmap) shape will be divided by
-        self.kernel_scale = 8 # self.get_parameter('kernel_scale').get_parameter_value().double_value
+        self.get_parameter('kernel_scale').get_parameter_value().double_value
         self.state_qty = self.get_parameter('state_qty').get_parameter_value().integer_value
         self.question_qty = self.get_parameter('question_qty').get_parameter_value().integer_value
         self.question_depth = self.get_parameter('max_images_per_state').get_parameter_value().integer_value
@@ -63,7 +63,7 @@ class TopologicalLocalization(Node):
         self.map_resolution = self.get_parameter('map_resolution').get_parameter_value().double_value
 
         self.__pkg_folder = str(pathlib.Path(__file__).parent.resolve()).removesuffix('/topological_localization')
-        self.map_folder = os.path.join(get_package_share_directory('topological_mapping'), 'map2.npy')
+        self.map_folder = os.path.join(get_package_share_directory('topological_mapping'), 'map4.npy')
         self.image_map_folder = os.path.join(get_package_share_directory('topological_mapping'), 'map3.jpg')
 
         self.image_converter = CvBridge()        
@@ -301,68 +301,6 @@ class TopologicalLocalization(Node):
         self.get_logger().debug(f"center 2d {center_2d}")
 
         return True
- 
-
-    def publish_pose(self,x,y,theta,frame="map",covariance=1.0):
-        msg = PoseWithCovarianceStamped()
-        t = TransformStamped()
-        msg.pose.covariance[0] = covariance
-        msg.header.stamp = self.get_clock().now().to_msg()
-        msg.header.frame_id = frame
-        msg.pose.pose.position.x = x
-        msg.pose.pose.position.y = y
-        msg.pose.pose.position.z = 0.0
-        q = self.map_helper._quaternion_from_euler(0,0,theta)
-        msg.pose.pose.orientation.x = q[0]
-        msg.pose.pose.orientation.y = q[1]
-        msg.pose.pose.orientation.z = q[2]
-        msg.pose.pose.orientation.w = q[3]
-        self.pose_publisher.publish(msg)
-        try:
-            robot2odom = self.tf_buffer.lookup_transform(
-                        "base_footprint",
-                        "odom",
-                        rclpy.time.Time())
-        except TransformException as ex:
-            self.get_logger().info("got into exception")
-            self.get_logger().info(
-                f'Could not transform base_footprint to odom: {ex}')
-            return
-        self.get_logger().info("transform ok")
-        map2robot = TransformStamped()
-        map2robot.transform.translation.x = x
-        map2robot.transform.translation.y = y
-        map2robot.transform.translation.z = 0.0
-        map2robot.transform.rotation.x = q[0]
-        map2robot.transform.rotation.y = q[1]
-        map2robot.transform.rotation.z = q[2]
-        map2robot.transform.rotation.w = q[3]
-        # euler_robot2odom = tf_transformations.euler_from_quaternion([robot2odom.transform.rotation.x,
-        #                                                             robot2odom.transform.rotation.y,
-        #                                                             robot2odom.transform.rotation.z,
-        #                                                             robot2odom.transform.rotation.w])
-        map2robot_transform = tf2_kdl.transform_to_kdl(map2robot)
-        # PyKDL.Frame(PyKDL.Rotation.RPY(0,0,theta),
-        #                             PyKDL.Vector(x,y,0.0))
-        robot2odom_transform = tf2_kdl.transform_to_kdl(robot2odom)
-        # PyKDL.Frame(PyKDL.Rotation.RPY(euler_robot2odom[0],euler_robot2odom[1],euler_robot2odom[2]),
-        #                             PyKDL.Vector(robot2odom.transform.translation[0],
-        #                                          robot2odom.transform.translation[1],
-        #                                          robot2odom.transform.translation[2]))
-        #
-        odom2map = np.dot(map2robot_transform,robot2odom_transform)
-        t.header.stamp = self.get_clock().now().to_msg()
-        t.header.frame_id = "map"
-        t.child_frame_id = "odom"
-        t.transform.translation.x = odom2map[0, 3]
-        t.transform.translation.y = odom2map[1, 3]
-        t.transform.translation.z = odom2map[2, 3]
-        t.transform.rotation.w = np.sqrt(1 + odom2map[0, 0] + odom2map[1, 1] + odom2map[2, 2]) / 2
-        t.transform.rotation.x = (odom2map[2, 1] - odom2map[1, 2]) / (4 * t.transform.rotation.w)
-        t.transform.rotation.y = (odom2map[0, 2] - odom2map[2, 0]) / (4 * t.transform.rotation.w)
-        t.transform.rotation.z = (odom2map[1, 0] - odom2map[0, 1]) / (4 * t.transform.rotation.w)
-        self.tf_broadcaster.sendTransform(t)
-        return
 
     def _calculate_increment(self,msg_buffer):
 

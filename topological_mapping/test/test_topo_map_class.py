@@ -1,18 +1,20 @@
-from ament_index_python.packages import get_package_share_directory
-import unittest
-import os
 import copy
-import numpy as np
-from topological_mapping.topological_mapping.topological_map import TopologicalMap
-from nav_msgs.msg import OccupancyGrid
+import unittest
+
 from geometry_msgs.msg import PoseWithCovarianceStamped
+
+from nav_msgs.msg import OccupancyGrid
+
+import numpy as np
+
+from topological_mapping.topological_mapping.topological_map import TopologicalMap
 
 
 class PredStepTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         """Set up before first test method."""
-        pass        
+        pass
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -30,19 +32,18 @@ class PredStepTest(unittest.TestCase):
         self.topo_map = TopologicalMap(self.msg, 8, 10)
         self.topo_map.occupancy_image = np.zeros([100, 100, 3], dtype=np.uint8)
 
-
     def tearDown(self) -> None:
         """Tear down after each test method."""
-        del self.topo_map 
+        del self.topo_map
 
     def test_index_to_occupancy(self):
         x, y, z = self.topo_map.topological_index_to_occupancy_x_y((231*383*8)-1)
         assert x == 382 and y == 230 and z == 7
 
     def test_occupancy_to_index(self):
-        index = self.topo_map.occupancy_x_y_to_topological_index(0, 0, 0.3)  
+        index = self.topo_map.occupancy_x_y_to_topological_index(0, 0, 0.3)
 
-        assert index == 0 
+        assert index == 0
 
     def test_both_directions(self):
         # Height (y / rows):
@@ -70,15 +71,15 @@ class PredStepTest(unittest.TestCase):
 
         delta = 0.0001
         # error message in case if test case got failed
-        message = "first and second are not almost equal."
-        # assert function() to check if values are almost equal 
-        self.assertAlmostEqual(index,index_2,None,message,delta)
+        message = 'first and second are not almost equal.'
+        # assert function() to check if values are almost equal
+        self.assertAlmostEqual(index, index_2, None, message, delta)
 
     def test_index_to_occupancy_2(self):
-        x, y, z = self.topo_map.topological_index_to_occupancy_x_y(118516)      
+        x, y, z = self.topo_map.topological_index_to_occupancy_x_y(118516)
         assert x == 260 and y == 38 and z == 4
-    
-    def test_pose_to_index(self):    
+
+    def test_pose_to_index(self):
 
         pos = PoseWithCovarianceStamped()
         pos.pose.pose.position.x = -9.62
@@ -214,7 +215,6 @@ class PredStepTest(unittest.TestCase):
 
         self.assertEqual(6, index)
 
-
         q = self.topo_map._quaternion_from_euler(0, 0, -1.9*2*np.pi/8)
 
         pos.pose.pose.orientation.x = q[0]
@@ -226,14 +226,12 @@ class PredStepTest(unittest.TestCase):
 
         self.assertEqual(5, index)
 
-
         pos.pose.pose.position.x = -9.62 + 0.051
         pos.pose.pose.position.y = -5.83
         pos.pose.pose.orientation.x = 0.0
         pos.pose.pose.orientation.y = 0.0
         pos.pose.pose.orientation.z = 0.0
         pos.pose.pose.orientation.w = 1.0
-        
 
         index = self.topo_map.pose_to_index(pos)
 
@@ -245,12 +243,10 @@ class PredStepTest(unittest.TestCase):
         pos.pose.pose.orientation.y = 0.0
         pos.pose.pose.orientation.z = 0.0
         pos.pose.pose.orientation.w = 1.0
-        
 
         index = self.topo_map.pose_to_index(pos)
 
         self.assertEqual(16, index)
-
 
     def test_index_to_pose(self):
 
@@ -271,7 +267,7 @@ class PredStepTest(unittest.TestCase):
                                  0.0,
                                  0.0,
                                  0.0,
-                                 1.0])     
+                                 1.0])
 
     def test_both_directions_index_and_pose(self):
 
@@ -373,24 +369,12 @@ class PredStepTest(unittest.TestCase):
         self.topo_map.save_map('/tmp')
 
         test_map = np.load('/tmp/map.npy', allow_pickle=True)
-        sum = 0 
+        sum = 0
         for row in range(test_map.shape[0]):
             for colum in range(test_map.shape[1]):
-                for state in range(test_map.shape[2]):                                
+                for state in range(test_map.shape[2]):
                     for i in range(10):
                         if test_map[row, colum, state, i][0] != 0:
                             sum += 1
 
         self.assertAlmostEqual(sum/10, 50)
-
-
-
-        
-        
-
-
-
-
-
-        
-        

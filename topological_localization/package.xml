@@ -14,7 +14,8 @@
 
   <depend>vqa_ros</depend>
   <depend>topological_mapping</depend>
-  <depend>tf_transformations</depend>
+  <depend>topological_mapping</depend>
+
 
   <export>
     <build_type>ament_python</build_type>

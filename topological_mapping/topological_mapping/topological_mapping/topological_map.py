@@ -3,7 +3,7 @@ import cv2
 import os
 import yaml
 import pathlib
-from math import pi,atan2,copysign,asin,cos,sin
+from math import pi, atan2, copysign, asin, cos, sin
 from geometry_msgs.msg import Pose
 
     
@@ -46,7 +46,6 @@ class TopologicalMap():
                                    '('+str(question_qty)+','+str(question_depth)+')'+'f']})
 
         self.topological_map = np.array([], dtype=dt)
-
 
     def __del__(self):
         print('Topological map destroyed')

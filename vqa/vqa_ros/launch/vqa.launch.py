@@ -1,7 +1,11 @@
-from launch import LaunchDescription
-from launch_ros.actions import Node
-from ament_index_python.packages import get_package_share_directory
 import os
+
+from ament_index_python.packages import get_package_share_directory
+
+from launch import LaunchDescription
+
+from launch_ros.actions import Node
+
 import yaml
 
 
@@ -24,17 +28,11 @@ def generate_launch_description():
             name='vqa',
             output='screen',
             emulate_tty=True,
-            # parameters=[os.path.join(
-            #     get_package_share_directory("vqa_ros"),
-            #     "params.yaml")],    
-            parameters = [params],       
+            parameters=[params],
             remappings=[
-                # ('image', '/camera/rgb/image_raw'),
-                ('image','/head_front_camera/rgb/image_raw'),
+                # ('image', '/xtion/rgb/image_raw'),
+                ('image', '/head_front_camera/rgb/image_raw'),
                 ('camera_info', '/camera/rgb/camera_info'),
             ],
         )
     ])
-
-
-    

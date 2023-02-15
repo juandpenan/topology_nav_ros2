@@ -1,26 +1,11 @@
 vqa_node:
   ros__parameters:
 
-    # questions: ['Where are you?',
-    #             'Is there any door?',
-    #             'What color is the wall?',              
-    #             'What object do you see?',
-    #             'What color is the object',
-    #             'What color is the floor',
-    #             'Is there any person?',
-    #             'Is there any window?',
-    #             'Is there any plant?',
-    #             'Is there any bed?'
-    #             ]
-    questions: ['Where are you?',        
-            'What object do you see?',
-            'What is the color of the object?',
-            'What is the texture of the object?',           
-            'Where is the object placed?',    
-            'What furniture do you see?',
-            'What is the color of the furniture?',     
-            'Where is the furniture placed?'                        
-            ]
-    #0.5 s per question       
-    frequency_execution_time: 4.5
+    questions: ['What is this place?',     
+                'What object do you see?',
+                'What is to the right of to the *?',
+                'What is the material of *?',
+                'What is to the shape of *?']
+ 
+    frequency_execution_time: 2.5
 

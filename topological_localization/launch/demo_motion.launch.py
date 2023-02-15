@@ -7,13 +7,26 @@ from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.actions import Node
 from launch.substitutions import LaunchConfiguration
+import yaml
 
 
 def generate_launch_description():
+    # run_rqt_arg = DeclareLaunchArgument(
+    #     name="run_rqt",
+    #     default_value="True",
+    #     description="Launch RQT?")
     map_config = os.path.join(
       get_package_share_directory('topological_mapping'),
       'params.yaml'
       )
+    cv_dir = os.path.join(
+      get_package_share_directory('computer_vision')
+      )
+
+    with open(map_config, 'r') as f:
+        map_config = yaml.safe_load(f)['map_server']['ros__parameters']
+
+    map_config['yaml_filename'] = os.path.join(cv_dir, 'maps', str(map_config['yaml_filename']))
 
     config = os.path.join(
       get_package_share_directory('topological_localization'), 
@@ -23,6 +36,7 @@ def generate_launch_description():
         get_package_share_directory('topological_mapping'),
         'topomap_params.yaml'
     )
+
     rviz = Node(
             package='rviz2',
             namespace='',
@@ -30,7 +44,7 @@ def generate_launch_description():
             name='rviz2',
             arguments=['-d', os.path.join(get_package_share_directory('topological_localization'), 'default.rviz')]
         )
-    map =  Node(
+    map = Node(
                 package='nav2_lifecycle_manager',
                 executable='lifecycle_manager',
                 name='lifecycle_manager_localization',
@@ -45,7 +59,7 @@ def generate_launch_description():
         name='map_server',
         respawn=True,
         respawn_delay=2.0,
-        parameters=[map_config], )      
+        parameters=[map_config],)
 
     tiago_sim = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([os.path.join(
@@ -58,7 +72,7 @@ def generate_launch_description():
          name='motion_update',
          parameters=[config, top_config],
          remappings=[
-            ('odom','/ground_truth_odom')])
+            ('odom', '/ground_truth_odom')])
 
 
     return LaunchDescription([
