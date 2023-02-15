@@ -78,4 +78,4 @@ repositories:
   thirdparty/computer_vision:
     type: git
     url: https://github.com/jmguerreroh/ros2_computer_vision.git
-    version: humble-devel
+    version: ros2-humble
