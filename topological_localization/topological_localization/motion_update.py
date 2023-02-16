@@ -49,13 +49,13 @@ class TopologicalLocalization(Node):
 
         # parameters
         self.declare_parameter('map_resolution', 0.050)
-        # self.declare_parameter('kernel_scale', 2.0)
+        self.declare_parameter('kernel_scale', 2.0)
         self.declare_parameter('question_qty', 10)
         self.declare_parameter('state_qty', 8)
         self.declare_parameter('max_images_per_state', 10)
         
         # it is the number the map(gridmap) shape will be divided by
-        self.get_parameter('kernel_scale').get_parameter_value().double_value
+        self.kernel_scale = self.get_parameter('kernel_scale').get_parameter_value().double_value
         self.state_qty = self.get_parameter('state_qty').get_parameter_value().integer_value
         self.question_qty = self.get_parameter('question_qty').get_parameter_value().integer_value
         self.question_depth = self.get_parameter('max_images_per_state').get_parameter_value().integer_value
