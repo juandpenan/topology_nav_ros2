@@ -27,10 +27,10 @@ repositories:
     type: git
     url: https://github.com/pal-robotics/launch_pal.git
     version: master
-  # thirdparty/navigation2:
-  #   type: git
-  #   url: https://github.com/gezp/navigation2.git
-  #   version: fix_obstacle_layer
+  thirdparty/navigation2:
+    type: git
+    url: https://github.com/ros-planning/navigation2.git
+    version: humble
   thirdparty/pal_gazebo_worlds:
     type: git
     url: https://github.com/pal-robotics/pal_gazebo_worlds.git
