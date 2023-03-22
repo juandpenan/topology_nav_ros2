@@ -6,11 +6,12 @@ from ament_index_python.packages import get_package_share_directory
 from rclpy.node import Node
 from nav2_msgs.msg import Costmap
 from map_msgs.srv import GetMapROI
+from std_msgs.msg import Header, Float32
 from nav_msgs.srv import GetMap
 from nav_msgs.msg import OccupancyGrid
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Pose, PoseWithCovarianceStamped
-from vqa_msgs.msg import VisualFeatures
+from vqa_msgs.msg import VisualFeatures, MonologueHypothesis
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy,QoSDurabilityPolicy
 import pathlib
 from transformers import RobertaModel,RobertaTokenizerFast
@@ -43,7 +44,7 @@ class TopologicalLocalization(Node):
         map_qos_profile = QoSProfile(
             reliability=QoSReliabilityPolicy.RELIABLE,
             history=QoSHistoryPolicy.KEEP_LAST,
-            durability= QoSDurabilityPolicy.TRANSIENT_LOCAL,
+            durability=QoSDurabilityPolicy.TRANSIENT_LOCAL,
             depth=1
         )
 
@@ -53,6 +54,7 @@ class TopologicalLocalization(Node):
         self.declare_parameter('question_qty', 10)
         self.declare_parameter('state_qty', 8)
         self.declare_parameter('max_images_per_state', 10)
+
         
         # it is the number the map(gridmap) shape will be divided by
         # self.get_parameter('kernel_scale').get_parameter_value().double_value
@@ -64,13 +66,14 @@ class TopologicalLocalization(Node):
         # m/pix
         self.map_resolution = self.get_parameter(
                              'map_resolution').get_parameter_value().double_value
+       
 
         self.__pkg_folder = str(
                             pathlib.Path(__file__).parent.resolve()).removesuffix(
                                 '/topological_localization')
 
         self.map_folder = os.path.join(
-            get_package_share_directory('topological_mapping'), 'map6.npy')
+            get_package_share_directory('topological_mapping'), 'map10.npy')
         self.image_map_folder = os.path.join(
             get_package_share_directory('topological_mapping'), 'map6.jpg')
 
@@ -79,10 +82,10 @@ class TopologicalLocalization(Node):
         self.map_helper = None
         # init prediction variables
         self.vqa_features = None
-        self.timer = self.create_timer(7, self.control_cycle)
+        self.timer = self.create_timer(3.0, self.control_cycle)
 
         # publishers
-        self.pose_publisher = self.create_publisher(PoseWithCovarianceStamped, '/markov_pose', 1)
+        self.pose_publisher = self.create_publisher(MonologueHypothesis, '/markov_pose', 1)
         self.pose_publisher_variant = self.create_publisher(
             PoseWithCovarianceStamped, '/markov_pose_variant', 1)
 
@@ -102,16 +105,16 @@ class TopologicalLocalization(Node):
 
     def control_cycle(self):
 
-        if self.vqa_features == None:
+        if self.vqa_features is None:
             return
 
         self.get_logger().info('executing algorithm')
 
         self.localization_algorithm()
-        # image = self.grid_to_img()
-        # map = self.img_to_occupancy(image)
+        image = self.grid_to_img()
+        map = self.img_to_occupancy(image)
 
-        # self.grid_publisher.publish(map)
+        self.grid_publisher.publish(map)
         # self.init_localization_grid()
 
 
@@ -130,7 +133,7 @@ class TopologicalLocalization(Node):
 
 
     def grid_to_img(self):
-        return (self._localization_grid[:,:,0] * 255).round().astype(np.uint8)
+        return (self._localization_grid * 255).round().astype(np.uint8)
 
     def broadcast_map(self):
 
@@ -153,71 +156,84 @@ class TopologicalLocalization(Node):
 
     def perception_update(self):
 
-        # ['garage'],
-        # ['toaster oven', 'printer'],
-        # ['washing machine', 'pillow'],
-        # ['plastic', 'plastic'],
-        # ['square', 'square']
-        # test = ['garage', 'toaster oven', 'washing machine', 'plastic', 'square']
-        test = ['garage', 'toaster oven', 'pillow', 'plastic', 'square']
-        self.vqa_features.data = self.vqa_features.data[0:3]
-        # self.vqa_features.data = self.vqa_features.data[:-1]
         question_answers_indexes = []
         question_answers_accs = []
-        self.get_logger().debug(f'must be 5 {len(self.vqa_features.data)}')
+        
         for i in range(len(self.vqa_features.data)):
-
-
+            # the nos seems to dont bring more information (to check)
+            if self.vqa_features.data[i] == 'no':
+                continue
             ind = np.where(self.map_helper.topological_map['q_a'] == self.vqa_features.data[i])
             # we keep only coincidences in the current question
             ind = ind[0][np.where(ind[1] == i)]
             
             # we keep the topological indexes where there is a coincidence :
-            current_question_indexes = self.map_helper.topological_map['index'][np.unique(ind)] 
+            current_question_indexes = self.map_helper.topological_map['index'][np.unique(ind)]
             current_question_acc = []
  
             # we extract the accuracy for each one of them (acc of question times acc of map)            
             for index in np.unique(ind):
-                acc_ind = np.where(self.map_helper.topological_map['q_a'][index][i] == self.vqa_features.data[i])            
-                acc = acc_ind[0].size / np.nonzero(self.map_helper.topological_map['q_a'][index][i])[0].size              
+                # model 1 :
+                acc = 1/(abs(self.vqa_features.acc[i] - np.mean(self.map_helper.topological_map['acc'][index][i][np.nonzero(self.map_helper.topological_map['acc'][index][i])]))+1)
+
+                # model 2 : 
+                # acc_ind = np.where(self.map_helper.topological_map['q_a'][index][i] == self.vqa_features.data[i])                        
+                # acc = acc_ind[0].size / np.nonzero(self.map_helper.topological_map['q_a'][index][i])[0].size
+                
+                # model 3:
+                #acc = np.sum(self.map_helper.topological_map['acc'][index][i][np.nonzero(self.map_helper.topological_map['acc'][index][i])]) / self.map_helper.topological_map['acc'][index][i][np.nonzero(self.map_helper.topological_map['acc'][index][i])].size
+                
+                # test model:
+                # acc = 1.0
                 current_question_acc.append(acc)
 
             question_answers_indexes.extend(current_question_indexes.tolist())
             question_answers_accs.extend(current_question_acc)
 
                     
-            current_map_raw = np.transpose(np.array([question_answers_indexes,question_answers_accs]))
+            current_map_raw = np.transpose(np.array([question_answers_indexes, question_answers_accs]))
+      
             
             # there are repeated indexes
             unique_elements, counts = np.unique(current_map_raw[:, 0], return_counts=True)
+            # self.get_logger().info(f'current map {current_map_raw[:, 0]}')
 
-         
-
-
-            # Iterate over the unique elements
-            x=0
-            for i in unique_elements:
-
+        
+        #     # current_map_raw[index][1]
+        #     # Iterate over the unique elements
+      
+            for x, i  in enumerate(unique_elements):
+                idx = np.where(current_map_raw[:, 0] == i)
                 col,row,state = self.map_helper.topological_index_to_occupancy_x_y(int(i))
-                self._localization_grid[row,col,0] += counts[x] / (self.question_qty - 0)
-                self._localization_grid[row,col,state+1] += counts[x] / (self.question_qty - 0)
-                x+=1
-                # indices = np.where(current_map_raw[:, 0] == i)
-                # values = current_map_raw[indices][:, 1]
-                # average = np.average(values)
-                # count_ind = np.where(unique_elements == i)
-                
-                # col,row,state = self.map_helper.topological_index_to_occupancy_x_y(int(i))
-                # self._localization_grid[row,col,0] += average * counts[count_ind]
-                # self._localization_grid[row,col,state+1] += average * counts[count_ind]
 
+                # # model 1 
+                acc = np.sum(current_map_raw[idx, 1])
+
+
+                # model 3:
+                # acc = current_map_raw[idx, 1]
+
+                # model 1 
+                # if math.isinf(acc):
+                #     acc = 50000
+                                    
+                self._localization_grid[row,col] *= acc
+
+                # model 2 :
+                # self._localization_grid[row,col] += counts[x] / (self.question_qty - 0)
+
+                # model 3:
+                # self._localization_grid[row,col] /= np.sum(acc) / (self.question_qty - 2)
+
+                # model test:
+                # self._localization_grid[row,col] += 1 
+
+        self._localization_grid = self._localization_grid / np.sum(self._localization_grid)
         self._localization_grid = self._localization_grid / self._localization_grid.max()
 
 
 
-
-
-        # self.vqa_features.data = self.vqa_features.data[0:3] 
+ # self.vqa_features.data = self.vqa_features.data[0:3] 
         # question_answers_indexes = []
         # question_answers_accs = []
         # self.get_logger().debug(f'must be 3 {len(self.vqa_features.data)}')
@@ -334,8 +350,9 @@ class TopologicalLocalization(Node):
 
 
     def vqa_callback(self,vqa_msg):
-
+    
         self.vqa_features = vqa_msg
+
 
 
 
@@ -353,18 +370,17 @@ class TopologicalLocalization(Node):
         #                 self.map_helper.occupancy_map.info.width))
         self._localization_grid = np.full(
             shape=(self.map_helper.occupancy_map.info.height,
-                   self.map_helper.occupancy_map.info.width,
-                   self.state_qty+1),
+                   self.map_helper.occupancy_map.info.width
+                   ),
             fill_value= 1/ (self.map_helper.occupancy_map.info.height *
-                   self.map_helper.occupancy_map.info.width *
-                   (self.state_qty+1)))
-        self._localization_grid_variant = np.full(
-            shape=(self.map_helper.occupancy_map.info.height,
-                   self.map_helper.occupancy_map.info.width,
-                   self.state_qty+1),
-            fill_value= 1/ (self.map_helper.occupancy_map.info.height *
-                   self.map_helper.occupancy_map.info.width *
-                   (self.state_qty+1)))
+                   self.map_helper.occupancy_map.info.width ))
+        # self._localization_grid_variant = np.full(
+        #     shape=(self.map_helper.occupancy_map.info.height,
+        #            self.map_helper.occupancy_map.info.width,
+        #            self.state_qty+1),
+        #     fill_value= 1/ (self.map_helper.occupancy_map.info.height *
+        #            self.map_helper.occupancy_map.info.width *
+        #            (self.state_qty+1)))
 
         # self._localization_grid[116,192,0] = 1.0
 
@@ -382,8 +398,7 @@ class TopologicalLocalization(Node):
              
         ind = np.unravel_index(np.argmax(self._localization_grid, axis=None), self._localization_grid.shape)
         x, y = self.map_helper._get_world_x_y(ind[1], ind[0])
-        theta = self.map_helper._undiscretize_angle(ind[2])
-        
+ 
         msg = PoseWithCovarianceStamped()
         msg.header.frame_id = 'map'
         msg.header.stamp = self.get_clock().now().to_msg()
@@ -392,33 +407,60 @@ class TopologicalLocalization(Node):
         msg.pose.pose.position.y = y
         msg.pose.pose.position.z = 0.0
 
-        q = self.map_helper._quaternion_from_euler(0.0, 0.0, theta)
+        q = self.map_helper._quaternion_from_euler(0.0, 0.0, 0.0)
         msg.pose.pose.orientation.x = q[0]
         msg.pose.pose.orientation.y = q[1]
         msg.pose.pose.orientation.z = q[2]
         msg.pose.pose.orientation.w = q[3]
 
-        self.pose_publisher.publish(msg)
+        self.pose_publisher_variant.publish(msg)
 
-        # ind = np.unravel_index(np.argmax(self._localization_grid_variant, axis=None), self._localization_grid_variant.shape)
-        # x, y = self.map_helper._get_world_x_y(ind[1], ind[0])
-        # theta = self.map_helper._undiscretize_angle(ind[2])
+        # indexes = np.argsort(-self._localization_grid.flatten())
+        # top_three_indices = indexes[:3]
+        # top3_indexes_2d = np.unravel_index(top_three_indices, self._localization_grid.shape)
+        # top_values = self._localization_grid[top3_indexes_2d]
+
+        # msg = MonologueHypothesis()
+        # poses = []
+        # weights = []
+        # headers = []
+        # i = 0
+        # for ind_y, ind_x in zip(*top3_indexes_2d):
+
+        #     pos = Pose()
+            
+        #     header = Header()
+           
+        #     x, y = self.map_helper._get_world_x_y(ind_x, ind_y)
+        #     # todo(jaundpenan) incorpore rotation
+        #     theta = 0
+                    
+        #     theta = self.map_helper._undiscretize_angle(theta)       
         
-        # msg = PoseWithCovarianceStamped()
-        # msg.header.frame_id = 'map'
-        # msg.header.stamp = self.get_clock().now().to_msg()
+        #     header.frame_id = 'map'
+            
 
-        # msg.pose.pose.position.x = x
-        # msg.pose.pose.position.y = y
-        # msg.pose.pose.position.z = 0.0
+        #     pos.position.x = x
+        #     pos.position.y = y
+        #     pos.position.z = 0.0
 
-        # q = self.map_helper._quaternion_from_euler(0.0, 0.0, theta)
-        # msg.pose.pose.orientation.x = q[0]
-        # msg.pose.pose.orientation.y = q[1]
-        # msg.pose.pose.orientation.z = q[2]
-        # msg.pose.pose.orientation.w = q[3]
+        #     q = self.map_helper._quaternion_from_euler(0.0, 0.0, theta)
+        #     pos.orientation.x = q[0]
+        #     pos.orientation.y = q[1]
+        #     pos.orientation.z = q[2]
+        #     pos.orientation.w = q[3]
+            
+        #     weights.append(top_values[i])
+        #     poses.append(pos)
+        #     headers.append(header)
 
-        # self.pose_publisher_variant.publish(msg)
+        #     i += 1
+        # msg.headers = headers
+        # msg.weight = weights
+        # msg.poses = poses
+        # self.pose_publisher.publish(msg)
+
+
        
         return True
         
@@ -430,7 +472,7 @@ class TopologicalLocalization(Node):
         self.perception_update()
         t2 = self.get_clock().now()
         self.publish_pose()
-        self.get_logger().info(f'time on motion update :{t2-t1}')
+        self.get_logger().info(f'time on perception update :{t2-t1}')
 
    
     # CALLBACKS FUNCTIONS:

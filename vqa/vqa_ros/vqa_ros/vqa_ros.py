@@ -3,6 +3,7 @@ from PIL import Image as Pimage
 from cv_bridge import CvBridge
 
 import rclpy
+from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 
 from sensor_msgs.msg import Image
@@ -111,9 +112,11 @@ class VQAModel(Node):
 
 def main(args=None):
     rclpy.init(args=args)
+    #executor = MultiThreadedExecutor()
     vqa_node = VQAModel()
+    #executor.add_node(vqa_node)
+    #executor.spin()
     rclpy.spin(vqa_node)
-
 
 if __name__ == '__main__':
     main()

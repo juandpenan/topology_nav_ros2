@@ -6,6 +6,6 @@ vqa_node:
                 'What is to the right of to the *?',
                 'What is the material of *?',
                 'What is to the shape of *?']
- 
+    
     frequency_execution_time: 2.5
 
