@@ -20,6 +20,7 @@ with open(param_config, 'r') as f:
 
 print(params)
 
+
 def generate_launch_description():
     return LaunchDescription([
         Node(

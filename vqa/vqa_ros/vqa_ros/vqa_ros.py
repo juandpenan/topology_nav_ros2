@@ -3,18 +3,16 @@ from PIL import Image as Pimage
 from cv_bridge import CvBridge
 
 import rclpy
-from rclpy.executors import MultiThreadedExecutor
+
 from rclpy.node import Node
 
 from sensor_msgs.msg import Image
 
-import torch
+import torch.nn.functional as F
 
 from vqa_msgs.msg import VisualFeatures
 
 from vqa_ros import utils
-
-torch.set_grad_enabled(False)
 
 
 class VQAModel(Node):
@@ -24,19 +22,16 @@ class VQAModel(Node):
         # params
         self.declare_parameter('frequency_execution_time', 2.1)
         self.declare_parameter('questions', ['where am i?'])
-        execution_time = self.get_parameter(
-            'frequency_execution_time').get_parameter_value().double_value
+
         self.questions = self.get_parameter(
             'questions').get_parameter_value().string_array_value
-        self.model = None
-        self.load_model()
+
+        self.model = utils.model
         self.image_data = None
         self.image_converter = CvBridge()
 
-        # every execution_time seconds
-        self.timer = self.create_timer(execution_time, self.timer_callback)
         # publishers
-        self.feature_publisher = self.create_publisher(VisualFeatures, '/vqa/features', 3)
+        self.feature_publisher = self.create_publisher(VisualFeatures, '/vqa/features', 1)
         # subscribers
         self.scene_data_subscriber = self.create_subscription(
             Image,
@@ -44,9 +39,10 @@ class VQAModel(Node):
             self.scene_callback,
             1)
 
-    def timer_callback(self):
+    def execute_model(self):
         try:
             image = self.image_converter.imgmsg_to_cv2(self.image_data)
+            image = Pimage.fromarray(image)
             if self.feature_publisher.get_subscription_count() == 0:
                 return
         except Exception:
@@ -56,15 +52,30 @@ class VQAModel(Node):
             visual_features = VisualFeatures()
             answers = []
             confidence = []
-            # TODO (juandpenan)
-            # with Pool(5) as p:
-            # answers,confidence = zip(*p.starmap(utils._plot_inference_qa, zip(repeat(image),self.questions)))
+
             for question in self.questions:
                 if question.find('*') != -1:
                     question = question.replace('*', answers[1])
-                    answer, conf = self._plot_inference_qa(image, question)
+                    encoding = utils.processor(image, question, return_tensors="pt")
+                    encoding = {k: v.to('cuda') for k, v in encoding.items()}
+                    # forward pass
+                    outputs = self.model(**encoding)
+                    logits = outputs.logits
+                    # Get the predicted label and its corresponding logit score
+                    predicted_idx = logits.argmax(-1).item()                    
+                    answer = self.model.config.id2label[predicted_idx]
+                    conf = F.softmax(logits, dim=-1)[0][predicted_idx].item()
                 else:
-                    answer, conf = self._plot_inference_qa(image, question)
+                                
+                    encoding = utils.processor(image, question, return_tensors="pt")
+                    encoding = {k: v.to('cuda') for k, v in encoding.items()}
+                    outputs = self.model(**encoding)
+                    logits = outputs.logits
+                    # Get the predicted label and its corresponding logit score
+                    predicted_idx = logits.argmax(-1).item()                   
+               
+                    answer = self.model.config.id2label[predicted_idx]
+                    conf = F.softmax(logits, dim=-1)[0][predicted_idx].item()
 
                 self.get_logger().debug('current question' + question)
 
@@ -79,44 +90,14 @@ class VQAModel(Node):
 
     def scene_callback(self, data):
         self.image_data = data
+        self.execute_model()
 
-    def load_model(self):
-        self.model = torch.hub.load('ashkamath/mdetr:main',
-                                    'mdetr_efficientnetB5_gqa',
-                                    pretrained=True,
-                                    return_postprocessor=False)
-        self.model = self.model.cuda()
-        self.model.eval();
-        return
-    
-    def _plot_inference_qa(self, im, caption):
-        # mean-std normalize the input image (batch-size: 1)
-        img_converted = Pimage.fromarray(im)
-        img = utils._transform(img_converted).unsqueeze(0).cuda()
-
-        # propagate through the model
-        memory_cache = self.model(img, [caption], encode_and_save=True)
-        outputs = self.model(img, [caption], encode_and_save=False, memory_cache=memory_cache)
-
-        # Classify the question type
-        type_conf, type_pred = outputs['pred_answer_type'].softmax(-1).max(-1)
-        ans_type = type_pred.item()
-        types = ['obj', 'attr', 'rel', 'global', 'cat']
-
-        ans_conf, ans = outputs[f'pred_answer_{types[ans_type]}'][0].softmax(-1).max(-1)      
-        answer = utils.id2answerbytype[f'answer_{types[ans_type]}'][ans.item()]
-
-        conf = round(100 * type_conf.item() * ans_conf.item(), 2)
-
-        return answer, conf
 
 def main(args=None):
     rclpy.init(args=args)
-    #executor = MultiThreadedExecutor()
     vqa_node = VQAModel()
-    #executor.add_node(vqa_node)
-    #executor.spin()
     rclpy.spin(vqa_node)
+
 
 if __name__ == '__main__':
     main()
