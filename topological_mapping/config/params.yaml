@@ -3,5 +3,4 @@ map_server:
       frame_id: map   
       topic_name: map
       use_sim_time: false
-      # yaml_filename: "/home/juan/Workspaces/phd_ws/src/topological_localization/ros2_computer_vision/src/computer_vision/maps/lab.yaml"
       yaml_filename: "aws_house.yaml"
