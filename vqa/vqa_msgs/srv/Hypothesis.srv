@@ -1,0 +1,3 @@
+---
+bool success # indicate if the hypothesis was succesfull generated
+geometry_msgs/Transform hypothesis # pose where the hypothesis is located

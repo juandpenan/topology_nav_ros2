@@ -7,20 +7,21 @@ find_package(builtin_interfaces REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
 
 
 set(msg_files
 
     msg/VisualFeatures.msg
     msg/FeaturesInfo.msg
-
-
-
+    msg/MonologueHypothesis.msg
   )
-
-  rosidl_generate_interfaces(${PROJECT_NAME}
-    ${msg_files}
-    DEPENDENCIES builtin_interfaces std_msgs sensor_msgs
+set(srv_files
+  srv/Hypothesis.srv
+)
+rosidl_generate_interfaces(${PROJECT_NAME}
+    ${msg_files} ${srv_files}
+    DEPENDENCIES builtin_interfaces std_msgs sensor_msgs geometry_msgs
 )
 
 

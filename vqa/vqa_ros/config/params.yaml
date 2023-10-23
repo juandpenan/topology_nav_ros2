@@ -1,11 +1,11 @@
 vqa_node:
   ros__parameters:
 
-    questions: ['What is this place?',     
-                'What object do you see?',
-                'What is to the right of to the *?',
-                'What is the material of *?',
-                'What is to the shape of *?']
-    
-    frequency_execution_time: 2.5
+    questions: ['What object do you see?',
+                'Is there a white board?',
+                'Is there a fire extinguisher',
+                'Is there a door',
+                'Is there a brown wall?',
+                'Is there a chair?',
+                'Is there a trash can']
 

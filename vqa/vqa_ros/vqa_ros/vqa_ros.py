@@ -20,7 +20,6 @@ class VQAModel(Node):
     def __init__(self):
         super().__init__('vqa_node')
         # params
-        self.declare_parameter('frequency_execution_time', 2.1)
         self.declare_parameter('questions', ['where am i?'])
 
         self.questions = self.get_parameter(
@@ -38,6 +37,20 @@ class VQAModel(Node):
             '/image',
             self.scene_callback,
             1)
+
+    def _plot_inference_qa(self, image, question):
+
+        image = Pimage.fromarray(image)
+        encoding = utils.processor(image, question, return_tensors="pt")
+        encoding = {k: v.to('cuda') for k, v in encoding.items()}
+        outputs = self.model(**encoding)
+        logits = outputs.logits
+        # Get the predicted label and its corresponding logit score
+        predicted_idx = logits.argmax(-1).item()
+        answer = self.model.config.id2label[predicted_idx]
+        conf = F.softmax(logits, dim=-1)[0][predicted_idx].item()
+
+        return answer, conf
 
     def execute_model(self):
         try:

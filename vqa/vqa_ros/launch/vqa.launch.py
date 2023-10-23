@@ -31,8 +31,8 @@ def generate_launch_description():
             emulate_tty=True,
             parameters=[params],
             remappings=[
-                # ('image', '/xtion/rgb/image_raw'),
-                ('image', '/head_front_camera/rgb/image_raw'),
+                ('image', '/xtion/rgb/image_raw'),
+                # ('image', '/head_front_camera/rgb/image_raw'),
                 ('camera_info', '/camera/rgb/camera_info'),
             ],
         )
