@@ -14,6 +14,8 @@ def generate_launch_description():
       get_package_share_directory('topological_mapping'),
       'params.yaml'
       )
+    cv_dir = get_package_share_directory('computer_vision')
+
     ros2_serial_example_directory = os.path.join(get_package_share_directory('vqa_ros'))
 
     param_config = os.path.join(ros2_serial_example_directory,
@@ -21,11 +23,14 @@ def generate_launch_description():
 
     with open(param_config, 'r') as f:
         params = yaml.safe_load(f)['vqa_node']['ros__parameters']
+    with open(config, 'r') as f:
+        conf = yaml.safe_load(f)['map_server']['ros__parameters']
+        
+        conf['yaml_filename'] = os.path.join(cv_dir,
+                                             'maps',
+                                             str(conf['yaml_filename']))
+        config = conf
 
-    top_config = os.path.join(
-        get_package_share_directory('topological_mapping'),
-        'topomap_params.yaml'
-    )
     map = Node(
                 package='nav2_lifecycle_manager',
                 executable='lifecycle_manager',
@@ -42,11 +47,12 @@ def generate_launch_description():
         respawn=True,
         respawn_delay=2.0,
         parameters=[config], )
+
     save_disc = Node(
         package='topological_mapping',
         executable='generate_map',
         name='save_to_disc',
-        parameters=[params, top_config]
+        parameters=[params]
     )
     return LaunchDescription([
         map_server,

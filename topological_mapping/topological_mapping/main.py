@@ -35,6 +35,12 @@ class TopologicalMapping(Node):
             durability=QoSDurabilityPolicy.TRANSIENT_LOCAL,
             depth=1
         )
+        pose_qos_profile = QoSProfile(
+            reliability=QoSReliabilityPolicy.BEST_EFFORT,
+            history=QoSHistoryPolicy.KEEP_LAST,
+            durability=QoSDurabilityPolicy.VOLATILE,
+            depth=1
+        )
         # parameters
         self.declare_parameter('question_qty', 10)
         self.declare_parameter('state_qty', 8)
@@ -68,7 +74,7 @@ class TopologicalMapping(Node):
                                  self.map_callback,
                                  qos_profile=map_qos_profile)
         self.tss = ApproximateTimeSynchronizer([Subscriber(self, Image, 'image'),
-                                                Subscriber(self, Odometry, 'odom')],
+                                                Subscriber(self, PoseWithCovarianceStamped, 'amcl_pose', qos_profile=pose_qos_profile)],
                                                10,
                                                0.25)
         self.tss.registerCallback(self.store_data_cb)
@@ -96,6 +102,7 @@ class TopologicalMapping(Node):
         self.tf_static_broadcaster.sendTransform(t)
 
     def store_data_cb(self, image_msg, odom_msg):
+        self.get_logger().info('got to callback')
         try:
             self.map.state_qty
         except Exception:
@@ -126,8 +133,8 @@ class TopologicalMapping(Node):
         _path = os.path.join(self._map_folder + folder_name)
         os.makedirs(_path, exist_ok=True)
         image = self.image_converter.imgmsg_to_cv2(img)      	
-        # cv2.imwrite(_path+"/"+str(self.get_clock().now().nanoseconds)+".jpg",  cv2.cvtColor(image, cv2.COLOR_RGB2BGR))
-        cv2.imwrite(_path+'/'+str(self.get_clock().now().nanoseconds)+'.jpg',  image)
+        cv2.imwrite(_path+"/"+str(self.get_clock().now().nanoseconds)+".jpg",  cv2.cvtColor(image, cv2.COLOR_RGB2BGR))
+        # cv2.imwrite(_path+'/'+str(self.get_clock().now().nanoseconds)+'.jpg',  image)
 
     def visualize_mapping(self, pose):
         msg = Marker()
