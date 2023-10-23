@@ -63,3 +63,7 @@ one one terminal launch simulation:
 ```
 ros2 launch topological_localization demo_mh_amcl.launch.py 
 ```
+## Showcase video:
+[![Video example](http://img.youtube.com/vi/RXhiu2eJHrI/0.jpg)](https://youtu.be/RXhiu2eJHrI)
+
+
