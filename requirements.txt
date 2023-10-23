@@ -1,14 +1,4 @@
 setuptools
 torch
-torchvision
 tensorflow
-cython
-scipy
-xmltodict
-tqdm
 transformers
-onnx
-onnxruntime
-prettytable
-submitit
-timm

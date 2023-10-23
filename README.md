@@ -34,7 +34,7 @@ colcon build --symlink-install
 ```
 # How to run:
 
-## Execute perception update:
+## Execute mapping node:
 ```
 cd ~/topoly_ws
 ```
@@ -43,15 +43,16 @@ source ~/topology_ws/install/setup.bash
 ```
 one one terminal launch simulation:
 ```
-ros2 launch computer_vision simulation.launch.py 
+ros2 launch topological_mapping map.launch.py 
 ```
-open another terminal and launch perception:
+open another terminal and launch rviz2:
 ```
-ros2 launch topological_localization demo_perception.launch.py
+rviz2
 ```
+- with rviz open use the set initial pose button to determine the initial pose.
+- move the robot where you want to extract semantic features of the map.
 
-
-## Execute motion update:
+## Execute localization:
 ```
 cd ~/topoly_ws
 ```
@@ -60,9 +61,5 @@ source ~/topology_ws/install/setup.bash
 ```
 one one terminal launch simulation:
 ```
-ros2 launch computer_vision simulation.launch.py 
-```
-open another terminal and launch motion:
-```
-ros2 launch topological_localization demo_motion.launch.py
+ros2 launch topological_localization demo_mh_amcl.launch.py 
 ```
