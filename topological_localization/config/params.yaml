@@ -2,3 +2,4 @@
   ros__parameters:
     map_resolution: 0.050
     kernel_scale: 8.0
+    map_name: "map20231023_132629"

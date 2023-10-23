@@ -46,6 +46,7 @@ class TopologicalLocalization(Node):
         self.declare_parameter('question_qty', 10)
         self.declare_parameter('state_qty', 8)
         self.declare_parameter('max_images_per_state', 10)
+        self.declare_parameter('map_name', "map")
         
         # it is the number the map(gridmap) shape will be divided by:
         self.kernel_scale = self.get_parameter('kernel_scale').get_parameter_value().double_value
@@ -53,6 +54,8 @@ class TopologicalLocalization(Node):
         self.question_qty = self.get_parameter('question_qty').get_parameter_value().integer_value
         self.question_depth = self.get_parameter(
             'max_images_per_state').get_parameter_value().integer_value
+        self.map_name = self.get_parameter(
+            'map_name').get_parameter_value().string_value
         # m/pix
         self.map_resolution = self.get_parameter(
             'map_resolution').get_parameter_value().double_value
@@ -60,9 +63,9 @@ class TopologicalLocalization(Node):
         self.__pkg_folder = str(pathlib.Path(__file__).parent.resolve()).removesuffix(
             '/topological_localization')
         self.map_folder = os.path.join(get_package_share_directory('topological_mapping'),
-                                       'map4.npy')
+                                       self.map_name + '.npy')
         self.image_map_folder = os.path.join(get_package_share_directory('topological_mapping'),
-                                             'map3.jpg')
+                                             self.map_name + '.jpg')
 
         self.vqa_features = None
         self.image_converter = CvBridge()
@@ -311,49 +314,6 @@ class TopologicalLocalization(Node):
         self._localization_grid = self._localization_grid / self._localization_grid.max()
     
     def perception_update(self):
-
-        # question_answers_indexes = []
-        # question_answers_accs = []
-
-        # for i in range(len(self.vqa_features.data)):
-
-            #         # 'refrigerator' 
-            # ind = np.where(self.map_helper.topological_map['q_a'] == self.vqa_features.data[i])
-            # # we keep only coincidences in the current question 
-            # ind = ind[0][np.where(ind[1] == i)]
-            
-            # # we keep the topological indexes where there is a coincidence :
-            # current_question_indexes = self.map_helper.topological_map['index'][np.unique(ind)] 
-            # current_question_acc = []
- 
-            # # we extract the accuracy for each one of them (acc of question times acc of map)            
-            # for index in np.unique(ind):
-            #     acc_ind = np.where(self.map_helper.topological_map['q_a'][index][i] == self.vqa_features.data[i])            
-            #     acc = acc_ind[0].size / np.nonzero(self.map_helper.topological_map['q_a'][index][i])[0].size              
-            #     current_question_acc.append(acc)
-
-            # question_answers_indexes.extend(current_question_indexes.tolist())
-            # question_answers_accs.extend(current_question_acc)
-
-                    
-            # current_map_raw = np.transpose(np.array([question_answers_indexes,question_answers_accs]))
-            
-            # # there are repeated indexes
-            # unique_elements, counts = np.unique(current_map_raw[:, 0], return_counts=True)
-
-
-
-
-            # # Iterate over the unique elements
-            # for i in unique_elements:
-
-            #     indices = np.where(current_map_raw[:, 0] == i)
-            #     values = current_map_raw[indices][:, 1]
-            #     product = np.prod(values)
-                
-            #     col,row,state = self.map_helper.topological_index_to_occupancy_x_y(int(i))
-            #     self._localization_grid[row,col,0] *= (1/product)
-            #     self._localization_grid[row,col,state] *= (1/product)  
 
         question_answers_indexes = []
         question_answers_accs = []

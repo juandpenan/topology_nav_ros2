@@ -27,7 +27,8 @@ setup(
             'localization = topological_localization.main:main',
             'motion_update = topological_localization.motion_update:main',
             'perception_update = topological_localization.perception_update:main',
-            'msg_saver = topological_localization.save_marker_to_disk:main'
+            'msg_saver = topological_localization.save_marker_to_disk:main',
+            'experiment1 = topological_localization.experiment1:main'
         ],
     },
 )

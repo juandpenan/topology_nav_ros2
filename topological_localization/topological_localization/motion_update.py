@@ -53,18 +53,23 @@ class TopologicalLocalization(Node):
         self.declare_parameter('question_qty', 10)
         self.declare_parameter('state_qty', 8)
         self.declare_parameter('max_images_per_state', 10)
+        self.declare_parameter('map_name', "map")
         
         # it is the number the map(gridmap) shape will be divided by
         self.kernel_scale = self.get_parameter('kernel_scale').get_parameter_value().double_value
         self.state_qty = self.get_parameter('state_qty').get_parameter_value().integer_value
         self.question_qty = self.get_parameter('question_qty').get_parameter_value().integer_value
         self.question_depth = self.get_parameter('max_images_per_state').get_parameter_value().integer_value
+        self.map_name = self.get_parameter(
+            'map_name').get_parameter_value().string_value
         # m/pix
         self.map_resolution = self.get_parameter('map_resolution').get_parameter_value().double_value
 
         self.__pkg_folder = str(pathlib.Path(__file__).parent.resolve()).removesuffix('/topological_localization')
-        self.map_folder = os.path.join(get_package_share_directory('topological_mapping'), 'map4.npy')
-        self.image_map_folder = os.path.join(get_package_share_directory('topological_mapping'), 'map3.jpg')
+        self.map_folder = os.path.join(get_package_share_directory('topological_mapping'),
+                                       self.map_name + '.npy')
+        self.image_map_folder = os.path.join(get_package_share_directory('topological_mapping'),
+                                             self.map_name + '.jpg')
 
         self.image_converter = CvBridge()        
         self.tf_static_broadcaster = StaticTransformBroadcaster(self)
@@ -177,12 +182,6 @@ class TopologicalLocalization(Node):
 
     def init_localization_grid(self):
 
-        # self._localization_grid = np.full(
-        #     shape=(self.map_helper.occupancy_map.info.height,
-        #            self.map_helper.occupancy_map.info.width,
-        #            self.state_qty+1),
-        #     fill_value=1/((self.state_qty+1)*self.map_helper.occupancy_map.info.height*
-        #                 self.map_helper.occupancy_map.info.width))
         self._localization_grid = np.full(
             shape=(self.map_helper.occupancy_map.info.height,
                    self.map_helper.occupancy_map.info.width,
